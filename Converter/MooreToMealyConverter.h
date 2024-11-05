@@ -47,21 +47,22 @@ private:
     {
         MealyTransitionTable mealyTransitionTable;
 
+        auto stateToOutputSymbolMap = GetStateToOutputSymbolMap(statesInfo);
+
         for (auto& mooreRow : mooreTransitionTable)
         {
             std::pair<inputSymbol, std::vector<Transition>> mealyRow;
             mealyRow.first = mooreRow.first;
 
-            auto stateToOutputSymbolMap = GetStateToOutputSymbolMap(statesInfo);
-
             std::vector<Transition>& mealyTransitions = mealyRow.second;
             for (std::string state : mooreRow.second)
             {
                 std::string outputSymbol = stateToOutputSymbolMap[state];
+                state[0] = STATE_CHAR;
+
                 Transition transition(state, outputSymbol);
 
                 mealyTransitions.emplace_back(transition);
-
             }
             mealyTransitionTable.emplace_back(std::move(mealyRow));
         }

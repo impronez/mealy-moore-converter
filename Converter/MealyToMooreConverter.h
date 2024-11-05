@@ -1,10 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <map>
+#include <set>
 
 #include "../Automata/MealyAutomata.h"
-
-
 
 class MealyToMooreConverter
 {
