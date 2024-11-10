@@ -38,8 +38,7 @@ public:
 
         for (const auto& [inputSymbol, transitions] : m_transitionTable)
         {
-            std::string input = inputSymbol;
-            output << input;
+            output << inputSymbol;
 
             for (const Transition& transition : transitions)
             {
