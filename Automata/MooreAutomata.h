@@ -36,7 +36,6 @@ public:
             throw std::runtime_error("Could not open the file for writing.");
         }
 
-        // Запись состояний
         std::string statesStr, outputSymbolsStr;
         for (const auto& info : m_statesInfo)
         {
@@ -49,7 +48,6 @@ public:
         file << outputSymbolsStr;
         file << statesStr;
 
-        // Запись таблицы переходов
         for (const auto& input : m_inputSymbols)
         {
             file << input;

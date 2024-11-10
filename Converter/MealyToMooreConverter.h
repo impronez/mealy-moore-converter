@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <map>
+#include <queue>
 #include <set>
 
 #include "../Automata/MealyAutomata.h"
@@ -20,9 +21,9 @@ public:
     {
         auto mealyTransitionTable = m_mealy->GetTransitionTable();
         auto mealyStates = m_mealy->GetStates();
-
         auto inputSymbols = m_mealy->GetInputSymbols();
-        auto transitions = GetUniqueConsistentTransitions(mealyTransitionTable, mealyStates);
+
+        auto transitions = GetUniquePossibleTransitions(mealyTransitionTable, mealyStates);
         auto transitionTable = GetNewStateNamesFromTransitions(transitions);
 
         MooreStatesInfo mooreStateInfo;
@@ -36,21 +37,21 @@ public:
                 return a.first < b.first;
         });
 
-
         MooreTransitionTable mooreTransitionTable;
-        for (auto& it: mealyTransitionTable)
+        for (auto& row: mealyTransitionTable)
         {
-            std::string inputSymbol = it.first;
+            std::string inputSymbol = row.first;
             std::vector<State> states;
 
-            for (auto& iter: transitions)
+            for (auto& it: transitions)
             {
-                std::string state = iter.nextState;
+                std::string state = it.nextState;
 
                 auto stateIter = std::find(mealyStates.begin(), mealyStates.end(), state);
                 size_t index = std::distance(mealyStates.begin(), stateIter);
 
-                auto transition = it.second[index];
+                auto transition = row.second[index];
+
                 const std::string& transitionNewName = transitionTable.at(transition);
 
                 states.emplace_back(transitionNewName);
@@ -76,76 +77,68 @@ private:
         return transitionToNewStateNames;
     }
 
-    static size_t GetCountOfDuplicateTransitions(size_t stateIndex, std::vector<Transition>& transitions, MealyStates& states)
+    static std::vector<std::string> GetAllPossibleState(MealyTransitionTable& transitionTable, MealyStates& mealyStates)
     {
-        const std::string& stateToDuplicate = states.at(stateIndex);
+        std::vector<std::string> possibleStates = { mealyStates.front() };
+        std::set<std::string> possibleStatesSet = { mealyStates.front() };
+        size_t possibleStatesIndex = 0;
 
-        size_t count = 0;
-        bool isFound = false;
-        for (const auto& transition : transitions)
+        while (possibleStatesIndex < possibleStates.size())
         {
-            if (transition.nextState == stateToDuplicate)
-            {
-                if (!isFound)
-                {
-                    isFound = true;
-                }
+            size_t index = GetIndexOfStringInVector(mealyStates, possibleStates.at(possibleStatesIndex));
 
-                count++;
-            }
-            if (isFound && transition.nextState != stateToDuplicate)
-            {
-                break;
-            }
-        }
-
-        return count;
-    }
-
-    static std::vector<Transition> GetUniqueConsistentTransitions(MealyTransitionTable& transitionTable, MealyStates& initStates)
-    {
-        auto uniqueTransitions = GetUniqueTransitions(transitionTable);
-        std::set<Transition> addedTransitions = {};
-        std::vector states = { initStates.front() };
-        std::set statesList = {initStates.front()};
-        size_t stateIndex = 0;
-
-        // Проход по столбцам
-        while (stateIndex < states.size())
-        {
             for (auto& it: transitionTable)
             {
-                std::string state = it.second[stateIndex].nextState;
-                if (!statesList.contains(state))
+                std::string state = it.second[index].nextState;
+                if (!possibleStatesSet.contains(state))
                 {
-                    states.emplace_back(state);
-                    statesList.insert(state);
+                    possibleStatesSet.insert(state);
+                    possibleStates.push_back(state);
                 }
             }
 
-            ++stateIndex;
+            possibleStatesIndex++;
         }
 
-        std::vector<Transition> validTransitions = {};
+        return possibleStates;
+    }
 
-        for (auto& state: states)
+    static std::vector<Transition> GetUniquePossibleTransitions(MealyTransitionTable& transitionTable, MealyStates& mealyStates)
+    {
+        auto uniqueTransitions = GetUniqueTransitions(transitionTable);
+        std::vector<std::string> possibleStates = GetAllPossibleState(transitionTable, mealyStates);
+
+        std::vector<Transition> possibleTransitions;
+
+        for (auto& state: possibleStates)
         {
-            bool isFound = false;
-            for (const auto& it: uniqueTransitions)
+            for (bool isFound = false; auto& transition: uniqueTransitions)
             {
-                if (state == it.nextState)
+                if (transition.nextState == state)
                 {
                     isFound = true;
-                    validTransitions.emplace_back(it);
+                    possibleTransitions.push_back(transition);
                 }
-                else if (state != it.nextState && isFound)
+                if (isFound && transition.nextState != state)
                 {
                     break;
                 }
             }
         }
 
-        return validTransitions;
+        return possibleTransitions;
+    }
+
+    static size_t GetIndexOfStringInVector(std::vector<std::string>& states, std::string& state)
+    {
+        auto it = std::find(states.begin(), states.end(), state);
+
+        if (it != states.end())
+        {
+            return std::distance(states.begin(), it);
+        }
+
+        return -1;
     }
 
     static std::set<Transition> GetUniqueTransitions(MealyTransitionTable& transitionTable)

@@ -29,13 +29,13 @@ public:
             const std::string message = "Could not open file " + filename + " for writing";
             throw std::invalid_argument(message);
         }
-        // Запись состояний
+
         for (const auto& state: m_states)
         {
             output << ';' << state;
         }
         output << std::endl;
-        // Запись таблицы переходов
+
         for (const auto& [inputSymbol, transitions] : m_transitionTable)
         {
             std::string input = inputSymbol;
