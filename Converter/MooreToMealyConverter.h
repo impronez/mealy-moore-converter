@@ -18,9 +18,6 @@ public:
 
     [[nodiscard]] std::unique_ptr<MealyAutomata> GetMealyAutomata() const
     {
-        std::vector<std::string> inputSymbols = m_moore->GetInputSymbols();
-        std::vector<std::string> outputSymbols = m_moore->GetOutputSymbols();
-
         MooreStatesInfo mooreStatesInfo = m_moore->GetStatesInfo();
         MooreTransitionTable mooreTransitionTable = m_moore->GetTransitionTable();
 
@@ -36,7 +33,10 @@ private:
         MealyStates mealyStates;
         for (const auto& info : statesInfo)
         {
-            mealyStates.emplace_back(info.first);
+            std::string state = info.first;
+            state[0] = STATE_CHAR;
+
+            mealyStates.emplace_back(state);
         }
 
         return mealyStates;
@@ -64,6 +64,7 @@ private:
 
                 mealyTransitions.emplace_back(transition);
             }
+
             mealyTransitionTable.emplace_back(std::move(mealyRow));
         }
 
@@ -77,6 +78,7 @@ private:
         {
             stateToOutputSymbolMap[info.first] = info.second;
         }
+
 
         return stateToOutputSymbolMap;
     }

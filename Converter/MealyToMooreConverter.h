@@ -85,7 +85,8 @@ private:
 
         while (possibleStatesIndex < possibleStates.size())
         {
-            size_t index = GetIndexOfStringInVector(mealyStates, possibleStates.at(possibleStatesIndex));
+            std::string sourceState = possibleStates[possibleStatesIndex];
+            size_t index = GetIndexOfStringInVector(mealyStates, possibleStates.at(possibleStatesIndex++));
 
             for (auto& it: transitionTable)
             {
@@ -96,8 +97,6 @@ private:
                     possibleStates.push_back(state);
                 }
             }
-
-            possibleStatesIndex++;
         }
 
         return possibleStates;
@@ -106,6 +105,7 @@ private:
     static std::vector<Transition> GetUniquePossibleTransitions(MealyTransitionTable& transitionTable, MealyStates& mealyStates)
     {
         auto uniqueTransitions = GetUniqueTransitions(transitionTable);
+
         std::vector<std::string> possibleStates = GetAllPossibleState(transitionTable, mealyStates);
 
         std::vector<Transition> possibleTransitions;
@@ -138,7 +138,7 @@ private:
             return std::distance(states.begin(), it);
         }
 
-        return -1;
+        throw std::range_error("Invalid state");
     }
 
     static std::set<Transition> GetUniqueTransitions(MealyTransitionTable& transitionTable)
