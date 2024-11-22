@@ -1,11 +1,11 @@
 #pragma once
-
 #include <algorithm>
 #include <map>
-#include <queue>
+#include <memory>
 #include <set>
 
 #include "../Automata/MealyAutomata.h"
+#include "../Automata/MooreAutomata.h"
 
 class MealyToMooreConverter
 {
@@ -23,136 +23,183 @@ public:
         auto mealyStates = m_mealy->GetStates();
         auto inputSymbols = m_mealy->GetInputSymbols();
 
-        auto transitions = GetUniquePossibleTransitions(mealyTransitionTable, mealyStates);
-        auto transitionTable = GetNewStateNamesFromTransitions(transitions);
+        ClearImpossibleStates(mealyTransitionTable, mealyStates);
 
-        MooreStatesInfo mooreStateInfo;
-        for (auto& it: transitionTable)
-        {
-            mooreStateInfo.emplace_back(it.second, it.first.outputSymbol);
-        }
+        auto uniqueTransitions = GetUniqueTransitions(mealyTransitionTable);
 
-        std::sort(mooreStateInfo.begin(), mooreStateInfo.end(), [](const std::pair<std::string, std::string>& a,
-            const std::pair<std::string, std::string>& b) {
-                return a.first < b.first;
-        });
+        auto stateToTransitions = GetStateToTransitionsMap(uniqueTransitions);
+
+        auto transitionToNewStateName = GetNewStateNamesFromTransitions(uniqueTransitions, mealyStates, stateToTransitions);
+
+        auto mooreStatesInfo = GetMooreStatesInfo(transitionToNewStateName);
 
         MooreTransitionTable mooreTransitionTable;
         for (auto& row: mealyTransitionTable)
         {
             std::string inputSymbol = row.first;
             std::vector<State> states;
-
-            for (auto& it: transitions)
+            for (unsigned index = 0; auto& it: row.second)
             {
-                std::string state = it.nextState;
+                const std::string& state = mealyStates[index++];
+                std::string newState = transitionToNewStateName[it];
 
-                auto stateIter = std::find(mealyStates.begin(), mealyStates.end(), state);
-                size_t index = std::distance(mealyStates.begin(), stateIter);
+                auto transitionsCount = GetTransitionsCountWithEqualState(state, stateToTransitions);
 
-                auto transition = row.second[index];
-
-                const std::string& transitionNewName = transitionTable.at(transition);
-
-                states.emplace_back(transitionNewName);
+                states.insert(states.end(), transitionsCount, newState);
             }
             mooreTransitionTable.emplace_back(inputSymbol, states);
         }
 
         return std::make_unique<MooreAutomata>(
             std::move(inputSymbols),
-            std::move(mooreStateInfo),
+            std::move(mooreStatesInfo),
             std::move(mooreTransitionTable));
     }
+
 private:
-    static std::map<Transition, std::string> GetNewStateNamesFromTransitions(std::vector<Transition>& transitions)
+    static unsigned GetTransitionsCountWithEqualState(const std::string& state,
+        std::map<State, std::set<Transition>>& stateToTransitions)
+    {
+        return stateToTransitions[state].size();
+    }
+
+    static MooreStatesInfo GetMooreStatesInfo(std::map<Transition, std::string>& transitionToNewStateName)
+    {
+        MooreStatesInfo mooreStateInfo;
+        for (auto& it: transitionToNewStateName)
+        {
+            mooreStateInfo.emplace_back(it.second, it.first.outputSymbol);
+        }
+
+        std::sort(mooreStateInfo.begin(), mooreStateInfo.end(), SortStringFromIndexesComp);
+
+        return mooreStateInfo;
+    }
+
+    static std::map<State, std::set<Transition>> GetStateToTransitionsMap(std::vector<Transition>& transitions)
+    {
+        std::map<State, std::set<Transition>> stateToTransitions;
+        for (auto& transition: transitions)
+        {
+            if (!stateToTransitions.contains(transition.nextState))
+            {
+                stateToTransitions[transition.nextState] = {};
+            }
+
+            if (!stateToTransitions[transition.nextState].contains(transition))
+            {
+                stateToTransitions[transition.nextState].emplace(transition);
+            }
+        }
+
+        return stateToTransitions;
+    }
+
+    static std::map<Transition, std::string> GetNewStateNamesFromTransitions(std::vector<Transition>& transitions,
+        MealyStates& states, std::map<State, std::set<Transition>>& stateToTransitions)
     {
         std::map<Transition, std::string> transitionToNewStateNames;
-
-        for (unsigned index = FIRST_STATE_INDEX; auto& transition: transitions)
+        for (unsigned index = FIRST_STATE_INDEX; auto& state: states)
         {
-            transitionToNewStateNames[transition] = STATE_CHAR + std::to_string(index++);
+            for (auto& transition: stateToTransitions[state])
+            {
+                transitionToNewStateNames[transition] = STATE_CHAR + std::to_string(index++);
+            }
         }
 
         return transitionToNewStateNames;
     }
 
-    static std::vector<std::string> GetAllPossibleState(MealyTransitionTable& transitionTable, MealyStates& mealyStates)
-    {
-        std::vector<std::string> possibleStates = { mealyStates.front() };
-        std::set<std::string> possibleStatesSet = { mealyStates.front() };
-        size_t possibleStatesIndex = 0;
-
-        while (possibleStatesIndex < possibleStates.size())
-        {
-            std::string sourceState = possibleStates[possibleStatesIndex];
-            size_t index = GetIndexOfStringInVector(mealyStates, possibleStates.at(possibleStatesIndex++));
-
-            for (auto& it: transitionTable)
-            {
-                std::string state = it.second[index].nextState;
-                if (!possibleStatesSet.contains(state))
-                {
-                    possibleStatesSet.insert(state);
-                    possibleStates.push_back(state);
-                }
-            }
-        }
-
-        return possibleStates;
-    }
-
-    static std::vector<Transition> GetUniquePossibleTransitions(MealyTransitionTable& transitionTable, MealyStates& mealyStates)
-    {
-        auto uniqueTransitions = GetUniqueTransitions(transitionTable);
-
-        std::vector<std::string> possibleStates = GetAllPossibleState(transitionTable, mealyStates);
-
-        std::vector<Transition> possibleTransitions;
-
-        for (auto& state: possibleStates)
-        {
-            for (bool isFound = false; auto& transition: uniqueTransitions)
-            {
-                if (transition.nextState == state)
-                {
-                    isFound = true;
-                    possibleTransitions.push_back(transition);
-                }
-                if (isFound && transition.nextState != state)
-                {
-                    break;
-                }
-            }
-        }
-
-        return possibleTransitions;
-    }
-
-    static size_t GetIndexOfStringInVector(std::vector<std::string>& states, std::string& state)
-    {
-        auto it = std::find(states.begin(), states.end(), state);
-
-        if (it != states.end())
-        {
-            return std::distance(states.begin(), it);
-        }
-
-        throw std::range_error("Invalid state");
-    }
-
-    static std::set<Transition> GetUniqueTransitions(MealyTransitionTable& transitionTable)
+    static std::vector<Transition> GetUniqueTransitions(MealyTransitionTable& transitionTable)
     {
         std::set<Transition> uniqueTransitions;
+        std::vector<Transition> uniqueTransitionVector;
+
         for (auto& row: transitionTable)
         {
             for (auto& transition: row.second)
             {
-                uniqueTransitions.emplace(transition);
+                if (!uniqueTransitions.contains(transition))
+                {
+                    uniqueTransitions.emplace(transition);
+                    uniqueTransitionVector.emplace_back(transition);
+                }
             }
         }
 
-        return uniqueTransitions;
+        return uniqueTransitionVector;
+    }
+
+    static bool SortStringFromIndexesComp(const std::pair<std::string, std::string>& a, const std::pair<std::string, std::string>& b)
+    {
+        int numA = std::stoi(a.first.substr(1));
+        int numB = std::stoi(b.first.substr(1));
+
+        return numA < numB;
+    }
+
+    static void ClearImpossibleStates(MealyTransitionTable& table, MealyStates& states)
+    {
+        std::map<std::string, unsigned> statesIndexes;
+        for (unsigned index = 0; auto& state: states)
+        {
+            statesIndexes[state] = index++;
+        }
+
+        auto possibleStatesIndexes = GetPossibleStateIndexes(table, statesIndexes);
+        if (possibleStatesIndexes.empty())
+        {
+            return;
+        }
+
+        std::vector<std::string> possibleStates;
+        for (auto it: possibleStatesIndexes)
+        {
+            possibleStates.emplace_back(states.at(it));
+        }
+
+        MealyTransitionTable updatedTable;
+        for (auto& row: table)
+        {
+            std::string inputSymbol = row.first;
+            std::vector<Transition> rowStates;
+
+            for (auto it: possibleStatesIndexes)
+            {
+                rowStates.emplace_back(row.second.at(it));
+            }
+
+            updatedTable.emplace_back(inputSymbol, rowStates);
+        }
+
+        states = std::move(possibleStates);
+        table = std::move(updatedTable);
+    }
+
+    static std::set<unsigned> GetPossibleStateIndexes(const MealyTransitionTable& table, std::map<std::string, unsigned> statesIndexes)
+    {
+        std::vector<unsigned> possibleStateIndexesVector { 0 };
+        std::set<unsigned> possibleStateIndexesSet { 0 };
+        size_t possibleStateIndex = 0;
+
+        while (possibleStateIndex < possibleStateIndexesVector.size())
+        {
+            unsigned index = possibleStateIndexesVector[possibleStateIndex++];
+
+            for (auto& row: table)
+            {
+                std::string nextState = row.second[index].nextState;
+                unsigned nextStateIndex = statesIndexes[nextState];
+
+                if (!possibleStateIndexesSet.contains(nextStateIndex))
+                {
+                    possibleStateIndexesVector.push_back(nextStateIndex);
+                    possibleStateIndexesSet.emplace(nextStateIndex);
+                }
+            }
+        }
+
+        return possibleStateIndexesSet;
     }
 
     std::unique_ptr<MealyAutomata> m_mealy;

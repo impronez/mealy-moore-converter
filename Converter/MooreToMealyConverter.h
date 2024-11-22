@@ -79,7 +79,6 @@ private:
             stateToOutputSymbolMap[info.first] = info.second;
         }
 
-
         return stateToOutputSymbolMap;
     }
 

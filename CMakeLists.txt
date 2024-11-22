@@ -13,5 +13,5 @@ add_executable(mealy_moore_converter main.cpp
         Automata/IAutomata.h
         Automata/MealyAutomata.h
         Automata/MooreAutomata.h
-        Converter/MealyToMooreConverter.h
-        Converter/MooreToMealyConverter.h)
+        Converter/MooreToMealyConverter.h
+        Converter/MealyToMooreConverter.h)

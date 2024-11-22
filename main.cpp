@@ -3,6 +3,7 @@
 #include "ArgumentsParser.h"
 #include "AutomataController.h"
 #include "Converter/MealyToMooreConverter.h"
+#include "Converter/MealyToMooreConverter.h"
 #include "Converter/MooreToMealyConverter.h"
 
 void MealyToMooreConversion(Args& args)
@@ -39,10 +40,13 @@ int main(const int argc, char** argv)
                 break;
             default: break;
         }
+
+        std::cout << "Converted!\n";
     }
     catch (const std::exception& err)
     {
-        std::cout << err.what() << std::endl;
+        std::cout << err.what() << std::endl << "Not converted!\n";
+
         return -1;
     }
     return 0;

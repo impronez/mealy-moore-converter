@@ -13,3 +13,5 @@ _deps
 bin/
 cmake-build-debug/
 cmake-build-release/
+venv/
+.idea/
