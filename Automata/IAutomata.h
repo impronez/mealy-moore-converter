@@ -4,7 +4,7 @@
 
 struct Transition
 {
-    Transition(std::string& nextState, std::string& outputSymbol)
+    Transition(const std::string& nextState, const std::string& outputSymbol)
         : nextState(nextState),
         outputSymbol(outputSymbol)
     {}

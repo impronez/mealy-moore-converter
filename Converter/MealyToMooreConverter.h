@@ -25,7 +25,7 @@ public:
 
         ClearImpossibleStates(mealyTransitionTable, mealyStates);
 
-        auto uniqueTransitions = GetUniqueTransitions(mealyTransitionTable);
+        auto uniqueTransitions = GetUniqueTransitions(mealyTransitionTable, mealyStates);
 
         auto stateToTransitions = GetStateToTransitionsMap(uniqueTransitions);
 
@@ -110,8 +110,9 @@ private:
         return transitionToNewStateNames;
     }
 
-    static std::vector<Transition> GetUniqueTransitions(MealyTransitionTable& transitionTable)
+    static std::vector<Transition> GetUniqueTransitions(MealyTransitionTable& transitionTable, MealyStates& states)
     {
+        std::set<State> statesInTransitions;
         std::set<Transition> uniqueTransitions;
         std::vector<Transition> uniqueTransitionVector;
 
@@ -123,7 +124,17 @@ private:
                 {
                     uniqueTransitions.emplace(transition);
                     uniqueTransitionVector.emplace_back(transition);
+                    statesInTransitions.emplace(transition.nextState);
                 }
+            }
+        }
+
+        for (auto& it: states)
+        {
+            if (!statesInTransitions.contains(it))
+            {
+                uniqueTransitionVector.emplace_back(it, "");
+                uniqueTransitions.emplace(it, "");
             }
         }
 
